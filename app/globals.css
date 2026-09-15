@@ -1,26 +1,218 @@
 @import "tailwindcss";
 
+/*
+  Design tokens. Color values are injected as inline CSS custom properties
+  from config/theme.ts on <html> (see app/layout.tsx) — the values below are
+  fallbacks only, kept in sync so the page still renders correctly without
+  the inline style (e.g. static tooling, email previews of the HTML).
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #09090c;
+  --bg-elevated: #111116;
+  --surface: #131318;
+  --surface-featured: #221114;
+  --border: rgba(247, 246, 251, 0.08);
+  --border-strong: rgba(247, 246, 251, 0.16);
+  --text: #f6f5f9;
+  --muted: #9a97a8;
+  --muted-strong: #c3c0cf;
+  --primary: #b70c01;
+  --secondary: #c50c00;
+  --primary-gradient: linear-gradient(135deg, #b70c01 0%, #c50c00 100%);
+  /* Accessible tint of --primary — ≥4.5:1 on --bg. Used for text/hover/focus, never a second brand color. */
+  --primary-strong: #d0615a;
+  --primary-soft: rgba(183, 12, 1, 0.14);
+  --ring: #d0615a;
+
+  /*
+    Light-sweep hover effect for clickable cards: a soft, transparent red
+    band (never solid, never white) travelling across the card. This is a
+    motion/glow effect, not a second "brand gradient" — see DESIGN.md's
+    One Gradient Rule, which is about the solid two-stop button fill.
+  */
+  --sweep-light: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--primary) 45%, transparent) 47%,
+    color-mix(in srgb, var(--secondary) 55%, transparent) 53%,
+    transparent 70%
+  );
+
+  /* Spotlight card fill: black → deep red → black, with a bright, localized
+     glow patch (not a flat red field) — see LinkCard's spotlight variant. */
+  --spotlight-fill: radial-gradient(
+      130% 160% at 100% 0%,
+      color-mix(in srgb, var(--secondary) 40%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--primary) 24%, var(--bg-elevated)) 0%,
+      var(--bg) 50%,
+      color-mix(in srgb, var(--primary) 16%, var(--bg)) 100%
+    );
+  /* Spotlight card border: the one place a visible gradient border is used —
+     the brand gradient's colors, lifted to primary-strong so the edge reads
+     as luminous rather than a dark maroon line. */
+  --spotlight-border: linear-gradient(135deg, var(--primary-strong), var(--secondary));
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 160ms;
+  --duration-base: 280ms;
+  --duration-card: 380ms;
+  --duration-slow: 480ms;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--bg);
+  --color-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-surface-featured: var(--surface-featured);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-ring: var(--ring);
+
+  --font-display: var(--font-bricolage);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-jetbrains);
+
+  --radius-card: 1.25rem;
+  --radius-card-lg: 1.75rem;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 0 0 rgba(247, 246, 251, 0.04) inset,
+    0 20px 40px -24px rgba(0, 0, 0, 0.65);
+  --shadow-card-hover: 0 1px 0 0 rgba(247, 246, 251, 0.04) inset,
+    0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent),
+    0 24px 44px -22px rgba(0, 0, 0, 0.7),
+    0 16px 32px -20px color-mix(in srgb, var(--primary) 20%, transparent);
+  --shadow-card-featured: 0 1px 0 0 rgba(247, 246, 251, 0.06) inset,
+    0 24px 60px -20px color-mix(in srgb, var(--primary) 35%, transparent),
+    0 20px 40px -24px rgba(0, 0, 0, 0.7);
+  --shadow-glow-soft: 0 0 0 2px color-mix(in srgb, var(--primary-strong) 85%, transparent),
+    0 0 32px 3px color-mix(in srgb, var(--primary) 55%, transparent),
+    0 0 72px 8px color-mix(in srgb, var(--primary) 24%, transparent);
+  /*
+    Spotlight card (a self-product callout, one tier more premium than the
+    plain "featured" card): a layered glow — a crisp bright edge, a mid
+    bloom, and a soft outer diffusion — controlled, never a light source.
+    Deliberately quieter at rest than --shadow-card-featured (Portfólio stays
+    the visually loudest card at rest); the hover state is where LOCKER wakes
+    up and gets its moment.
+  */
+  --shadow-card-spotlight: 0 0 0 1px color-mix(in srgb, var(--primary-strong) 35%, transparent) inset,
+    0 0 18px -8px color-mix(in srgb, var(--primary-strong) 40%, transparent),
+    0 14px 36px -18px color-mix(in srgb, var(--primary) 40%, transparent),
+    0 0 56px -24px color-mix(in srgb, var(--primary) 25%, transparent);
+  --shadow-card-spotlight-hover: 0 0 0 1px color-mix(in srgb, var(--primary-strong) 75%, transparent) inset,
+    0 0 32px -4px color-mix(in srgb, var(--primary-strong) 85%, transparent),
+    0 22px 56px -14px color-mix(in srgb, var(--primary) 75%, transparent),
+    0 0 96px -16px color-mix(in srgb, var(--primary) 55%, transparent);
+
+  --animate-rise: rise var(--duration-slow) var(--ease-out-expo) both;
+  /* A gentle ease-in-out, not the site's expo-out: the sweep needs to glide
+     across at a visible, steady pace rather than front-load almost all of
+     its travel into the first frames like an arrival curve does. */
+  --animate-sweep: card-sweep 600ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-fg);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+    border: 2px solid var(--color-canvas);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+  }
+
+  a {
+    text-underline-offset: 3px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility container-page {
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

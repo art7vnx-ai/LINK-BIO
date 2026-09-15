@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Camada_2" data-name="Camada 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220.44 220.44">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #c8f135;
+      }
+
+      .cls-2 {
+        font-family: Linkara-Regular, Linkara;
+        font-size: 139.24px;
+      }
+    </style>
+  </defs>
+  <g id="Camada_1-2" data-name="Camada 1">
+    <rect class="cls-1" width="220.44" height="220.44" rx="37.11" ry="37.11"/>
+    <text class="cls-2" transform="translate(67.36 147.24)"><tspan x="0" y="0">L</tspan></text>
+  </g>
+</svg>
