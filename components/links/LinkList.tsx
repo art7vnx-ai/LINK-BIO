@@ -9,8 +9,8 @@ export function LinkList() {
       <h2 id="links-heading" className="sr-only">
         Links
       </h2>
-      {active.map((link) => (
-        <LinkCard key={link.id} link={link} />
+      {active.map((link, index) => (
+        <LinkCard key={link.id} link={link} enterDelayMs={index * 80} />
       ))}
     </section>
   );

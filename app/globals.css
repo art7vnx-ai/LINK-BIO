@@ -23,43 +23,49 @@
   --primary-strong: #d0615a;
   --primary-soft: rgba(183, 12, 1, 0.14);
   --ring: #d0615a;
+  /* Same "white-touched" recipe already used for the avatar's ring and the
+     status-dot's center — reused here so every hot point of the red accent
+     on the page reads as one light, not unrelated reds. Derived from
+     --primary-strong, so it stays correct under a future owner-picked
+     accent color too. */
+  --accent-hot: color-mix(in srgb, white 35%, var(--primary-strong));
 
   /*
-    Light-sweep hover effect for clickable cards: a soft, transparent red
-    band (never solid, never white) travelling across the card. This is a
-    motion/glow effect, not a second "brand gradient" — see DESIGN.md's
-    One Gradient Rule, which is about the solid two-stop button fill.
+    Light-sweep hover effect, shared by all four link cards: a soft, wide
+    reflection band gliding across the surface — a broad, gradual ramp up to
+    one gentle peak and back down, never a hard-edged bar (that read as a
+    "flash" in earlier passes). See DESIGN.md's Card Hover Sweep. Two color
+    variants: neutral (bone white) for the plain dark cards, and a warm
+    accent-hot tint for the two featured (red) cards, since a plain white
+    sweep reads as a mismatched cool highlight on a warm red surface.
   */
-  --sweep-light: linear-gradient(
-    100deg,
-    transparent 30%,
-    color-mix(in srgb, var(--primary) 45%, transparent) 47%,
-    color-mix(in srgb, var(--secondary) 55%, transparent) 53%,
-    transparent 70%
+  --sweep-light-neutral: linear-gradient(
+    105deg,
+    transparent 15%,
+    color-mix(in srgb, var(--text) 7%, transparent) 42%,
+    color-mix(in srgb, var(--text) 10%, transparent) 50%,
+    color-mix(in srgb, var(--text) 7%, transparent) 58%,
+    transparent 85%
+  );
+  --sweep-light-featured: linear-gradient(
+    105deg,
+    transparent 15%,
+    color-mix(in srgb, var(--accent-hot) 10%, transparent) 42%,
+    color-mix(in srgb, var(--accent-hot) 15%, transparent) 50%,
+    color-mix(in srgb, var(--accent-hot) 10%, transparent) 58%,
+    transparent 85%
   );
 
-  /* Spotlight card fill: black → deep red → black, with a bright, localized
-     glow patch (not a flat red field) — see LinkCard's spotlight variant. */
-  --spotlight-fill: radial-gradient(
-      130% 160% at 100% 0%,
-      color-mix(in srgb, var(--secondary) 40%, transparent) 0%,
-      transparent 55%
-    ),
-    linear-gradient(
-      155deg,
-      color-mix(in srgb, var(--primary) 24%, var(--bg-elevated)) 0%,
-      var(--bg) 50%,
-      color-mix(in srgb, var(--primary) 16%, var(--bg)) 100%
-    );
-  /* Spotlight card border: the one place a visible gradient border is used —
-     the brand gradient's colors, lifted to primary-strong so the edge reads
-     as luminous rather than a dark maroon line. */
-  --spotlight-border: linear-gradient(135deg, var(--primary-strong), var(--secondary));
-
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Gentler, symmetric ease used for every card hover microinteraction
+     (scale/lift/shadow/border/arrow) — expo-out's hard deceleration reads
+     as a "snap"; this reads as a calm, controlled response instead. Same
+     curve the sweep already used, so the two feel like one language. */
+  --ease-card: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 160ms;
   --duration-base: 280ms;
-  --duration-card: 380ms;
+  --duration-card: 450ms;
+  --duration-card-rise: 600ms;
   --duration-slow: 480ms;
 }
 
@@ -93,34 +99,43 @@
     0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent),
     0 24px 44px -22px rgba(0, 0, 0, 0.7),
     0 16px 32px -20px color-mix(in srgb, var(--primary) 20%, transparent);
+  /*
+    Featured card (the "destaque" tier — WhatsApp and LOCKER share this one
+    system, see DESIGN.md's Featured Ring): a controlled glow, quieter than
+    it looks, so the card reads as premium rather than neon. The hover
+    variant is only a small step up — the perimeter ring (below) is where
+    the card's identity actually lives, so hover never needs to compete
+    with it.
+  */
   --shadow-card-featured: 0 1px 0 0 rgba(247, 246, 251, 0.06) inset,
     0 24px 60px -20px color-mix(in srgb, var(--primary) 35%, transparent),
     0 20px 40px -24px rgba(0, 0, 0, 0.7);
-  --shadow-glow-soft: 0 0 0 2px color-mix(in srgb, var(--primary-strong) 85%, transparent),
+  --shadow-card-featured-hover: 0 1px 0 0 rgba(247, 246, 251, 0.06) inset,
+    0 0 0 1px color-mix(in srgb, var(--primary-strong) 40%, transparent),
+    0 26px 64px -18px color-mix(in srgb, var(--primary) 42%, transparent),
+    0 20px 40px -24px rgba(0, 0, 0, 0.75);
+  --shadow-glow-soft: 0 0 0 2px var(--accent-hot),
     0 0 32px 3px color-mix(in srgb, var(--primary) 55%, transparent),
     0 0 72px 8px color-mix(in srgb, var(--primary) 24%, transparent);
-  /*
-    Spotlight card (a self-product callout, one tier more premium than the
-    plain "featured" card): a layered glow — a crisp bright edge, a mid
-    bloom, and a soft outer diffusion — controlled, never a light source.
-    Deliberately quieter at rest than --shadow-card-featured (Portfólio stays
-    the visually loudest card at rest); the hover state is where LOCKER wakes
-    up and gets its moment.
-  */
-  --shadow-card-spotlight: 0 0 0 1px color-mix(in srgb, var(--primary-strong) 35%, transparent) inset,
-    0 0 18px -8px color-mix(in srgb, var(--primary-strong) 40%, transparent),
-    0 14px 36px -18px color-mix(in srgb, var(--primary) 40%, transparent),
-    0 0 56px -24px color-mix(in srgb, var(--primary) 25%, transparent);
-  --shadow-card-spotlight-hover: 0 0 0 1px color-mix(in srgb, var(--primary-strong) 75%, transparent) inset,
-    0 0 32px -4px color-mix(in srgb, var(--primary-strong) 85%, transparent),
-    0 22px 56px -14px color-mix(in srgb, var(--primary) 75%, transparent),
-    0 0 96px -16px color-mix(in srgb, var(--primary) 55%, transparent);
 
   --animate-rise: rise var(--duration-slow) var(--ease-out-expo) both;
-  /* A gentle ease-in-out, not the site's expo-out: the sweep needs to glide
-     across at a visible, steady pace rather than front-load almost all of
-     its travel into the first frames like an arrival curve does. */
-  --animate-sweep: card-sweep 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Success checkmark in the avatar/theme editor modals (one-shot, on mount
+     of a fresh DOM node when `step` flips to "success" — never looped, never
+     autoplaying). A rare, identity-level owner action deserves the state
+     change to actually arrive rather than cut in flat; still collapses to
+     near-instant under prefers-reduced-motion via the blanket rule below. */
+  --animate-pop: pop-in 420ms var(--ease-out-expo) both;
+  /* Card entrance: same rise keyframes as the profile header, own duration
+     token so tuning the cards' stagger never touches the header's timing. */
+  --animate-card-rise: rise var(--duration-card-rise) var(--ease-out-expo) both;
+  /* Same gentle ease-in-out as the card hover, not the site's expo-out: the
+     sweep needs to glide across at a visible, steady pace rather than
+     front-load almost all of its travel into the first frames. */
+  --animate-sweep: card-sweep 600ms var(--ease-card);
+  /* Independent background-bloom drifts — durations come from each
+     element's own --glow-drift-duration (config/background.ts). */
+  --animate-glow-drift-a: glow-drift-a var(--glow-drift-duration, 13000ms) ease-in-out infinite;
+  --animate-glow-drift-b: glow-drift-b var(--glow-drift-duration, 16000ms) ease-in-out infinite;
 }
 
 @layer base {
@@ -206,6 +221,57 @@
   }
 }
 
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slow, clearly-directional drifts for the two background blooms — A moves
+   right/up, B moves left/down, so the two visibly flow in opposite
+   directions rather than reading as one synchronized pulse. Still small
+   enough relative to each blob's own size that neither ever needs an
+   oversized box to hide an edge (the gradient's own falloff is already
+   fully transparent well before the viewport edge). */
+@keyframes glow-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(var(--glow-drift, 20px), calc(var(--glow-drift, 20px) * -0.5), 0);
+  }
+}
+
+@keyframes glow-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(calc(var(--glow-drift, 16px) * -1), calc(var(--glow-drift, 16px) * 0.4), 0);
+  }
+}
+
+/*
+  Dot-matrix background texture: a single, perfectly uniform tiled grid —
+  deliberately not the varied, scattered dot sizes/positions a starfield
+  would use (that cosmic-dust direction was tried and rejected). Static by
+  design, so there is no ambiguity with "particles." Masked to fade out
+  behind the profile header, so it never sits directly under the headline.
+*/
+.bg-dot-grid {
+  opacity: var(--dot-grid-opacity, 0.05);
+  background-repeat: repeat;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 32%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 32%, black 100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -214,5 +280,17 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /*
+    Sweep Light is one exception: a purely decorative, hover-triggered
+    (never autoplaying) flourish. Rather than killing it outright like every
+    other animation on the page, it stays alive but calmer — shorter and
+    dimmer, never fully gone. Class selector beats the universal one above
+    at equal !important weight, so this wins for exactly this element.
+  */
+  .sweep-light {
+    animation-duration: 320ms !important;
+    opacity: 0.55;
   }
 }

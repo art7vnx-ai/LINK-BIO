@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { profile, siteUrl } from "@/config/profile";
-import { themeCssVars } from "@/config/theme";
+import { getThemeCssVars } from "@/config/theme";
+import { BackgroundLayer } from "@/components/BackgroundLayer";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -60,7 +61,9 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const themeCssVars = await getThemeCssVars();
+
   return (
     <html
       lang="pt-BR"
@@ -92,6 +95,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               "-->",
           }}
         />
+        <BackgroundLayer />
         {children}
       </body>
     </html>

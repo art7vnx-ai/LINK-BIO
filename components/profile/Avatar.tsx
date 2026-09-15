@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import Image from "next/image";
+import { getAvatarUrl } from "@/lib/avatar-store";
 
 const PHOTO_PUBLIC_PATH = "/images/avatar.png";
 
@@ -10,7 +11,7 @@ const PHOTO_PUBLIC_PATH = "/images/avatar.png";
  * no code change needed. Falls back to the generated initials placeholder
  * otherwise (this check runs server-side, at render/build time).
  */
-function hasAvatarPhoto() {
+function hasLocalAvatarPhoto() {
   try {
     return fs.existsSync(path.join(process.cwd(), "public", "images", "avatar.png"));
   } catch {
@@ -18,7 +19,7 @@ function hasAvatarPhoto() {
   }
 }
 
-export function Avatar({
+export async function Avatar({
   initials,
   name,
   size = "default",
@@ -28,7 +29,13 @@ export function Avatar({
   /** "sm" is the small footer-signature variant: no glow, a hairline accent ring instead. */
   size?: "default" | "sm";
 }) {
-  const hasPhoto = hasAvatarPhoto();
+  // The uploaded (Vercel Blob) photo wins when present; otherwise fall back
+  // to the bundled local file, then to the initials placeholder. Resolves to
+  // null instantly (no network call) when BLOB_READ_WRITE_TOKEN isn't set.
+  const remotePhotoUrl = await getAvatarUrl();
+  const hasLocalPhoto = remotePhotoUrl ? false : hasLocalAvatarPhoto();
+  const photoUrl = remotePhotoUrl ?? (hasLocalPhoto ? PHOTO_PUBLIC_PATH : null);
+  const hasPhoto = photoUrl !== null;
   const isSmall = size === "sm";
 
   return (
@@ -54,10 +61,16 @@ export function Avatar({
               }
         }
       >
-        {hasPhoto ? (
+        {hasPhoto && photoUrl ? (
           <Image
-            src={PHOTO_PUBLIC_PATH}
-            alt={`Foto de ${name}`}
+            key={photoUrl}
+            src={photoUrl}
+            // The "sm" footer variant always sits directly beside the visible
+            // name text (see SiteFooter.tsx) — an alt string here would just
+            // repeat what a screen reader already announced a moment ago, so
+            // it's decorative there; the main profile photo still needs its
+            // own description since nothing else on the page names it.
+            alt={isSmall ? "" : `Foto de ${name}`}
             fill
             sizes={isSmall ? "30px" : "104px"}
             priority={!isSmall}

@@ -1,5 +1,6 @@
 import { profile } from "@/config/profile";
 import { Avatar } from "@/components/profile/Avatar";
+import { ThemeColorEditButton } from "@/components/ThemeColorEditButton";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -25,24 +26,29 @@ export function SiteFooter() {
             <span className="text-[0.8125rem] font-semibold text-fg">
               {profile.name}
             </span>
-            <span className="text-[0.6875rem] text-muted">{profile.badge}</span>
+            <span className="text-[0.6875rem] font-medium text-muted">{profile.badge}</span>
           </div>
         </div>
 
         {/* Desktop: plain credit line. */}
-        <p className="hidden text-sm text-muted-strong sm:block">
+        <p className="hidden text-sm font-medium text-muted-strong sm:block">
           Feito por <span className="font-semibold text-fg">{profile.name}</span>
         </p>
 
         <div className="flex flex-col items-end text-right">
-          <span className="text-[0.6875rem] text-muted-strong sm:text-xs">
+          <span className="text-[0.6875rem] font-medium text-muted-strong sm:text-xs">
             © {year}
             <span className="hidden sm:inline"> {profile.name}</span>
           </span>
-          <span className="text-[0.6875rem] text-muted sm:text-xs">
+          <span className="text-[0.6875rem] font-medium text-muted sm:text-xs">
             Todos os direitos reservados
           </span>
         </div>
+      </div>
+
+      {/* Deliberately tiny and low-opacity — an owner-only affordance, not a public control. */}
+      <div className="flex justify-center">
+        <ThemeColorEditButton />
       </div>
     </footer>
   );

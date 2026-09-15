@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { getPersistedTheme } from "@/lib/theme-store";
 
 /**
  * Single source of truth for the page's color skin.
@@ -52,3 +53,27 @@ export const themeCssVars: CSSProperties = {
   "--primary-soft": theme.primarySoft,
   "--ring": theme.ring,
 } as CSSProperties;
+
+/**
+ * Same shape as `themeCssVars`, but with the accent tokens (primary,
+ * secondary, gradient, strong tint, soft wash, ring) swapped out for a
+ * persisted custom color when the owner has picked one (see
+ * lib/theme-store.ts / components/ThemeColorEditButton.tsx). Every other
+ * token — canvas, surfaces, text, borders — is untouched: only the accent
+ * is ever user-editable. Falls back to the shipped defaults above when no
+ * custom color is set or Vercel Blob isn't configured.
+ */
+export async function getThemeCssVars(): Promise<CSSProperties> {
+  const persisted = await getPersistedTheme();
+  if (!persisted) return themeCssVars;
+
+  return {
+    ...themeCssVars,
+    "--primary": persisted.primary,
+    "--secondary": persisted.secondary,
+    "--primary-gradient": persisted.primaryGradient,
+    "--primary-strong": persisted.primaryStrong,
+    "--primary-soft": persisted.primarySoft,
+    "--ring": persisted.ring,
+  } as CSSProperties;
+}

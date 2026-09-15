@@ -8,14 +8,14 @@ export interface LinkItem {
   description: string;
   url: string;
   icon: LinkIcon;
-  /** Featured links get the elevated glow/gradient treatment. Keep this rare. */
-  featured?: boolean;
   /**
-   * A tier above `featured`: a self-product callout (dark→red→dark fill,
-   * glowing gradient border, tinted arrow). Keep this to at most one card —
-   * it reads as "my own product," not another portfolio/contact link.
+   * The one "destaque" tier: a red border, a subtle glow, and a slightly
+   * brighter surface. WhatsApp and LOCKER share this — it's a family, not a
+   * one-off; any future card can join by setting this true, with no new CSS
+   * to write. All cards (featured or not) share the same hover sweep — see
+   * `--sweep-light-featured` vs `--sweep-light-neutral` in globals.css.
    */
-  spotlight?: boolean;
+  featured?: boolean;
   active: boolean;
 }
 
@@ -25,12 +25,20 @@ const whatsappHref = socialLinks.find((s) => s.id === "whatsapp")!.href;
 
 export const links: LinkItem[] = [
   {
+    id: "whatsapp",
+    title: "Fale comigo no WhatsApp",
+    description: "Vamos conversar sobre o seu projeto.",
+    url: whatsappHref,
+    icon: "whatsapp",
+    featured: true,
+    active: true,
+  },
+  {
     id: "portfolio",
     title: "Portfólio",
     description: "Confira meus principais projetos e trabalhos de design.",
     url: behanceHref,
     icon: "behance",
-    featured: true,
     active: true,
   },
   {
@@ -42,20 +50,12 @@ export const links: LinkItem[] = [
     active: true,
   },
   {
-    id: "whatsapp",
-    title: "Fale comigo no WhatsApp",
-    description: "Vamos conversar sobre o seu projeto.",
-    url: whatsappHref,
-    icon: "whatsapp",
-    active: true,
-  },
-  {
     id: "locker",
     title: "LOCKER | Gestão simples para sua loja",
     description: "Meu produto: conheça e veja como funciona.",
     url: "https://www.lockerapp.com.br/landing",
     icon: "locker",
-    spotlight: true,
+    featured: true,
     active: true,
   },
 ];
