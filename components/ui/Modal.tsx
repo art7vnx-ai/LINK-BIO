@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 const FOCUSABLE_SELECTOR =
@@ -32,6 +32,42 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const generatedId = useId();
   const labelId = titleId || generatedId;
+
+  // `open` flipping to false used to unmount this instantly — an entrance
+  // with no matching exit. `rendered` stays true a moment longer so the
+  // panel/backdrop can play `--animate-rise-out` before actually leaving
+  // the DOM; `onAnimationEnd` below is what finally unmounts them. Derived
+  // during render (React's documented pattern for "adjust state when a
+  // prop changes"), not in an effect — the write happens before this
+  // render commits, so there's no extra render pass or flash of stale UI.
+  const [rendered, setRendered] = useState(open);
+  const [closing, setClosing] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setRendered(true);
+      setClosing(false);
+    } else if (rendered) {
+      setClosing(true);
+    }
+  }
+
+  // `onAnimationEnd` below is the primary trigger, but browsers never fire it
+  // for a near-zero-duration animation — exactly what the project's blanket
+  // `prefers-reduced-motion: reduce` rule collapses `--animate-rise-out` to
+  // (`animation-duration: 0.001ms !important`). Without this fallback, a
+  // reduced-motion user's modal would never unmount after closing. Reads the
+  // real computed duration so full-motion users get the same safety net,
+  // just one that never wins the race against the real animationend.
+  useEffect(() => {
+    if (!closing) return;
+    const panel = panelRef.current;
+    const durationMs = panel ? parseFloat(getComputedStyle(panel).animationDuration) * 1000 : 0;
+    const timer = window.setTimeout(() => setRendered(false), durationMs + 50);
+    return () => window.clearTimeout(timer);
+  }, [closing]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,7 +117,9 @@ export function Modal({
     };
   }, [open, busy, onClose]);
 
-  if (!open) return null;
+  if (!rendered) return null;
+
+  const motionClass = closing ? "[animation:var(--animate-rise-out)]" : "[animation:var(--animate-rise)]";
 
   return createPortal(
     <div
@@ -92,7 +130,7 @@ export function Modal({
     >
       <div
         aria-hidden
-        className="absolute inset-0 bg-canvas/80 backdrop-blur-sm"
+        className={`absolute inset-0 bg-canvas/80 backdrop-blur-sm ${motionClass}`}
         onClick={busy ? undefined : onClose}
       />
       <div
@@ -101,7 +139,10 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={labelId}
         tabIndex={-1}
-        className="relative w-full max-w-[22rem] rounded-card-lg border border-border-strong bg-elevated p-5 shadow-[var(--shadow-card-featured)] outline-none [animation:var(--animate-rise)]"
+        className={`relative w-full max-w-[22rem] rounded-card-lg border border-border-strong bg-elevated p-5 shadow-[var(--shadow-card-featured)] outline-none ${motionClass}`}
+        onAnimationEnd={() => {
+          if (closing) setRendered(false);
+        }}
       >
         {children}
       </div>

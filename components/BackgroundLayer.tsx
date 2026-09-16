@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { backgroundConfig } from "@/config/background";
+import { AmbientLights } from "./AmbientLights";
 
 /**
  * Decorative, page-wide ambient layer sitting behind all content: two soft,
@@ -79,6 +80,8 @@ export function BackgroundLayer() {
           }
         />
       )}
+
+      <AmbientLights />
     </div>
   );
 }

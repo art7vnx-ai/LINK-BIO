@@ -37,7 +37,10 @@
     "flash" in earlier passes). See DESIGN.md's Card Hover Sweep. Two color
     variants: neutral (bone white) for the plain dark cards, and a warm
     accent-hot tint for the two featured (red) cards, since a plain white
-    sweep reads as a mismatched cool highlight on a warm red surface.
+    sweep reads as a mismatched cool highlight on a warm red surface. Gradient
+    shape unchanged this round — already soft, already discreet; the pass got
+    quicker and a touch softer at the edges (see `.sweep-light`'s `blur`
+    below), not wider or brighter.
   */
   --sweep-light-neutral: linear-gradient(
     105deg,
@@ -56,6 +59,15 @@
     transparent 85%
   );
 
+  /*
+    Animated Border tokens — see `.animated-border` below. A rotating
+    conic-gradient hotspot traces WhatsApp's and LOCKER's real border-radius
+    outline continuously; Portfólio/Instagram don't carry this class at all,
+    so there's only ever one color pairing to express — no per-tier
+    indirection needed here any more.
+  */
+  --border-duration: 1.3s;
+
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   /* Gentler, symmetric ease used for every card hover microinteraction
      (scale/lift/shadow/border/arrow) — expo-out's hard deceleration reads
@@ -64,7 +76,10 @@
   --ease-card: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 160ms;
   --duration-base: 280ms;
-  --duration-card: 450ms;
+  /* Was 450ms — read as a half-beat slow for a hover response ("pesado"
+     rather than "rápida/precisa"): the same curve, just given less time to
+     travel, so scale/lift/shadow/border still land smoothly, only sooner. */
+  --duration-card: 320ms;
   --duration-card-rise: 600ms;
   --duration-slow: 480ms;
 }
@@ -119,6 +134,13 @@
     0 0 72px 8px color-mix(in srgb, var(--primary) 24%, transparent);
 
   --animate-rise: rise var(--duration-slow) var(--ease-out-expo) both;
+  /* Modal exit (components/ui/Modal.tsx): the same `rise` keyframes played
+     backward, so opening and closing read as one continuous gesture
+     instead of "arrives gracefully, vanishes instantly" — the modal
+     previously had an authored entrance and no matching exit at all.
+     Reusing `rise` in reverse (not a second keyframe block) keeps it the
+     same material idea, just undone. */
+  --animate-rise-out: rise var(--duration-slow) var(--ease-out-expo) reverse both;
   /* Success checkmark in the avatar/theme editor modals (one-shot, on mount
      of a fresh DOM node when `step` flips to "success" — never looped, never
      autoplaying). A rare, identity-level owner action deserves the state
@@ -130,8 +152,10 @@
   --animate-card-rise: rise var(--duration-card-rise) var(--ease-out-expo) both;
   /* Same gentle ease-in-out as the card hover, not the site's expo-out: the
      sweep needs to glide across at a visible, steady pace rather than
-     front-load almost all of its travel into the first frames. */
-  --animate-sweep: card-sweep 600ms var(--ease-card);
+     front-load almost all of its travel into the first frames. Was 600ms —
+     tightened to read as one quick, precise pass rather than a leisurely
+     glide, without going so fast it clips into a flash. */
+  --animate-sweep: card-sweep 480ms var(--ease-card);
   /* Independent background-bloom drifts — durations come from each
      element's own --glow-drift-duration (config/background.ts). */
   --animate-glow-drift-a: glow-drift-a var(--glow-drift-duration, 13000ms) ease-in-out infinite;
@@ -259,6 +283,309 @@
 }
 
 /*
+  Ambient Lights (components/AmbientLights.tsx): a field of tiny red
+  points scattered across the fixed background layer, each wandering its
+  own slow, irregular path and occasionally flashing brighter before
+  fading back to near-invisible. Two independent animations per light, on
+  deliberately unrelated durations so drift and flash never lock into a
+  visible pattern: `--light-drift` (one of three differently-shaped
+  wander keyframes, picked per instance) moves the light via `transform`
+  only; `light-twinkle` (below) modulates `opacity` and a small
+  `drop-shadow` glow only — the two never touch the same CSS property, so
+  neither animation can silently override the other.
+
+  The three drift shapes share the same idea — return to the start point
+  by 100% so the loop is seamless, pass through 3–4 waypoints at uneven
+  percentages so the path reads as a meander, not a clean oscillation —
+  but use different waypoint timings and sign combinations so no two
+  lights sharing a shape look identical once `--light-drift-x`/`-y` (this
+  instance's own direction and distance, in vw/vh so it scales with the
+  viewport) are applied. `will-change: transform` is a light hint here,
+  not a footgun: at most 16 small, simple elements, no per-frame JS.
+
+  Never leaves a trail: each light is one small radial-gradient dot,
+  moved via `transform`, nothing stretches or repeats along the path.
+*/
+.ambient-light {
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--accent-hot) 0%, var(--primary) 65%, transparent 100%);
+  pointer-events: none;
+  opacity: var(--light-op-min, 0.12);
+  animation:
+    var(--light-drift, light-drift-a) var(--light-drift-duration, 14s) ease-in-out infinite,
+    light-twinkle var(--light-twinkle-duration, 9s) ease-in-out infinite;
+  animation-delay: var(--light-drift-delay, 0s), var(--light-twinkle-delay, 0s);
+}
+
+@keyframes light-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(var(--light-drift-x, 2vw), calc(var(--light-drift-y, -3vh) * 0.5), 0);
+  }
+  50% {
+    transform: translate3d(calc(var(--light-drift-x, 2vw) * 0.3), var(--light-drift-y, -3vh), 0);
+  }
+  75% {
+    transform: translate3d(calc(var(--light-drift-x, 2vw) * -0.6), calc(var(--light-drift-y, -3vh) * 0.2), 0);
+  }
+}
+
+@keyframes light-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  35% {
+    transform: translate3d(calc(var(--light-drift-x, 2vw) * -0.4), var(--light-drift-y, -3vh), 0);
+  }
+  60% {
+    transform: translate3d(var(--light-drift-x, 2vw), calc(var(--light-drift-y, -3vh) * 0.4), 0);
+  }
+  85% {
+    transform: translate3d(calc(var(--light-drift-x, 2vw) * 0.2), calc(var(--light-drift-y, -3vh) * -0.5), 0);
+  }
+}
+
+@keyframes light-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(calc(var(--light-drift-x, 2vw) * 0.5), calc(var(--light-drift-y, -3vh) * -0.3), 0);
+  }
+  50% {
+    transform: translate3d(calc(var(--light-drift-x, 2vw) * -0.7), calc(var(--light-drift-y, -3vh) * 0.6), 0);
+  }
+  78% {
+    transform: translate3d(var(--light-drift-x, 2vw), var(--light-drift-y, -3vh), 0);
+  }
+}
+
+@keyframes light-twinkle {
+  0%,
+  82%,
+  100% {
+    opacity: var(--light-op-min, 0.12);
+    filter: drop-shadow(0 0 1.5px var(--accent-hot));
+  }
+  90% {
+    opacity: var(--light-op-max, 0.6);
+    filter: drop-shadow(0 0 4px var(--accent-hot));
+  }
+  96% {
+    opacity: var(--light-op-min, 0.12);
+    filter: drop-shadow(0 0 1.5px var(--accent-hot));
+  }
+}
+
+/*
+  Animated Border — WhatsApp and LOCKER only. A rotating conic-gradient
+  hotspot traces each card's real border-radius outline continuously,
+  independent of the Card Hover Sweep (a one-shot diagonal reflection on
+  hover-enter) and Card Aura (the external glow) above: three effects, no
+  shared code.
+
+  The user's supplied reference builds the ring with `border` +
+  `background-origin: border-box` + a `mask` pair XORed via
+  `mask-composite: exclude`. Attempted verbatim again this round and
+  re-confirmed, independently of the earlier attempt: `mask-composite:
+  exclude` alone (no gradient, no filter, no hover state involved) still
+  renders a reproducible diagonal tear across the whole page in this
+  project's own sandboxed test surface — visible with the filter removed,
+  worse with it present, gone the instant `mask` itself is removed, and
+  present again on a completely fresh reload at a different point along
+  its own rotation. That's a real, reproducible rendering failure of this
+  specific masking primitive here, not a one-off glitch, so — per "não
+  invente uma nova animação" — everything else about the technique ships
+  exactly as specified; only the ring's *geometry* mechanism swaps to a
+  mask-free equivalent this project already proved bug-free in an earlier
+  round: `::before` is the full-bleed conic-gradient at the card's own
+  bounds (`inset: 0`); `::after` is a `--border-width`-inset copy painted
+  with `background-color: inherit` (the card's own current background,
+  tracking its own hover color swap automatically), covering everything
+  except that thin rim. Both sit at `z-index: -1`, behind the actual card
+  content, `border-radius: inherit` keeping the ring on the card's own
+  rounded corners.
+
+  `@property --angle` is what makes any of this possible: it registers the
+  custom angle as an animatable `<angle>`, so `@keyframes spin` can tween
+  the conic-gradient's rotation frame-to-frame instead of jumping between
+  values.
+
+  One hotspot, same structure as the reference (`80% / 88% / 92% / 100%`,
+  only the two colors adapted): `--primary` for the resting three-quarters
+  of the ring, `--accent-hot` (the same white-touched red used by the
+  avatar ring and status dot) for the brief bright segment that travels
+  around it. A `drop-shadow` on `::before` is the "glow," not a second
+  layer — confirmed safe on its own in the same test (it wasn't what
+  produced the tear). Since `::after` only ever covers the *interior*
+  half of `::before`'s shape, never the outward-facing edge, the shadow's
+  outward extension reads as a soft halo hugging the same ring position,
+  never a second visible line.
+
+  Hover keeps the rotation running at the same speed and very slightly
+  brightens the glow (`filter: brightness(1.08) drop-shadow(...)` on
+  `.animated-border:hover::before`) — the ring reads as ambient and
+  continuous, never something the cursor can freeze. An earlier round
+  paused on hover to match the reference's own `:hover` rule literally;
+  this round replaces that with the brightness-only response instead, per
+  the current brief. Reduced motion keeps its existing carve-out below:
+  `infinite` at a drastically slower pace rather than freezing on a random
+  frame, same principle as the sweep.
+*/
+@property --angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0turn;
+}
+
+@keyframes spin {
+  to {
+    --angle: 1turn;
+  }
+}
+
+.animated-border {
+  --border-width: 2px;
+  position: relative;
+  isolation: isolate;
+}
+
+.animated-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: conic-gradient(
+    from var(--angle),
+    var(--primary) 80%,
+    var(--accent-hot) 88%,
+    var(--accent-hot) 92%,
+    var(--primary) 100%
+  );
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent-hot) 65%, transparent));
+  animation: spin var(--border-duration, 1.3s) linear infinite;
+  animation-delay: var(--border-delay, 0s);
+  pointer-events: none;
+}
+
+.animated-border::after {
+  content: "";
+  position: absolute;
+  inset: var(--border-width);
+  z-index: -1;
+  border-radius: inherit;
+  background-color: inherit;
+  pointer-events: none;
+}
+
+.animated-border:hover::before {
+  filter: brightness(1.08) drop-shadow(0 0 3px color-mix(in srgb, var(--accent-hot) 65%, transparent));
+}
+
+/*
+  Card Aura — WhatsApp and LOCKER only. Rebuilt to reproduce the user's
+  supplied reference technique verbatim (card + ::before as the animated
+  gradient layer + ::after as the scaled/blurred glow + @property --rotate
+  driving a linear-gradient + @keyframes spin), not the earlier
+  approximation (sibling <span> elements, always-on paused animation,
+  independent opacity tiers). Coexists with, and shares no code with, the
+  Card Hover Sweep and the Animated Border above — three separate effects
+  on the same cards, not variations of one system.
+
+  The card element itself (`<a class="animated-border">`) already owns
+  both its `::before` and `::after` for the Animated Border above — an
+  element only ever gets one of each, so the reference's "selector" is
+  `.card-aura-host` (the wrapping div in LinkCard.tsx) instead of the card.
+  It exactly matches the card's own rendered bounds, has no
+  `overflow-hidden` of its own (needed so the glow can extend past the
+  card, which the card's own `overflow-hidden` — required by the Sweep
+  Light — would otherwise clip), and only WhatsApp/LOCKER render it;
+  Portfólio/Instagram get a plain, class-less wrapper, so this whole rule
+  block never matches them: no ::before, no ::after, no spin, no blur.
+
+  Faithful to the reference's own structure: the base rule only sets
+  `opacity: 0` + `content` + `transition` — position, the gradient, and
+  the animation are declared solely inside `:hover`, so the animation
+  simply doesn't exist outside hover (no `animation-play-state` toggling
+  needed, unlike the old version). `border-radius` and exact inset/scale
+  values are the one deliberate adaptation to this card's own shape, per
+  "adaptando somente as cores e o formato ao meu componente de card" —
+  the mechanism itself (pseudo-elements, --rotate, linear-gradient, spin)
+  is unchanged from the reference.
+*/
+@property --rotate {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 132deg;
+}
+
+@keyframes card-aura-spin {
+  from {
+    --rotate: 0deg;
+  }
+  to {
+    --rotate: 360deg;
+  }
+}
+
+.card-aura-host {
+  isolation: isolate;
+}
+
+.card-aura-host::before,
+.card-aura-host::after {
+  content: "";
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  pointer-events: none;
+}
+
+.card-aura-host:hover::before,
+.card-aura-host:hover::after {
+  position: absolute;
+  z-index: -1;
+  background-image: linear-gradient(var(--rotate), var(--primary), var(--secondary) 43%, var(--accent-hot));
+  animation: card-aura-spin 2.5s linear infinite;
+  opacity: 1;
+}
+
+.card-aura-host:hover::before {
+  width: 102%;
+  height: 102%;
+  top: -1%;
+  left: -1%;
+  border-radius: var(--radius-card);
+  /* Unblurred, this read as a second, crisp ring sitting just outside the
+     card — a hard edge next to `::after`'s soft cloud, with a visible dark
+     gap between the two (the blurred layer's peak sits inset under the
+     opaque card, so its falloff only reaches full strength a little further
+     out than this layer's own edge). A soft blur here removes that hard
+     edge so both layers read as one continuous glow — tight and warmer
+     close in, diffusing outward — instead of two separate rings. */
+  filter: blur(8px);
+}
+
+.card-aura-host:hover::after {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Scaled down less than the reference's 0.9 — its blur's brightest
+     falloff now starts right at the card's own edge instead of receding
+     under it, closing the gap to `::before` above so the two layers meet
+     without a visible seam. */
+  transform: scale(0.96);
+  filter: blur(70px);
+  border-radius: var(--radius-card);
+}
+
+/*
   Dot-matrix background texture: a single, perfectly uniform tiled grid —
   deliberately not the varied, scattered dot sizes/positions a starfield
   would use (that cosmic-dust direction was tried and rejected). Static by
@@ -292,5 +619,21 @@
   .sweep-light {
     animation-duration: 320ms !important;
     opacity: 0.55;
+  }
+
+  /*
+    Animated Border is the other exception, adapted for a *continuous*
+    autoplaying animation rather than the sweep's one-shot, hover-only
+    case: the blanket rule above would otherwise force
+    `animation-iteration-count: 1`, which — combined with the 0.001ms
+    duration — freezes the ring at a random still frame instead of
+    "reducing" it. Explicitly restoring `infinite` at a drastically slower
+    pace keeps it a genuine (if barely-there) continuous effect, never
+    hidden outright, per "reduce speed/intensity, don't remove decorative
+    effects."
+  */
+  .animated-border::before {
+    animation-duration: 20s !important;
+    animation-iteration-count: infinite !important;
   }
 }
