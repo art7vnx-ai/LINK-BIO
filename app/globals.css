@@ -64,9 +64,10 @@
     conic-gradient hotspot traces WhatsApp's and LOCKER's real border-radius
     outline continuously; Portfólio/Instagram don't carry this class at all,
     so there's only ever one color pairing to express — no per-tier
-    indirection needed here any more.
+    indirection needed here any more. Was 1.3s — slowed down on request so
+    the hotspot's travel around the card is easier to actually follow.
   */
-  --border-duration: 1.3s;
+  --border-duration: 2s;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   /* Gentler, symmetric ease used for every card hover microinteraction
