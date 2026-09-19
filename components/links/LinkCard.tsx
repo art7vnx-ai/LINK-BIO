@@ -21,12 +21,13 @@ export function LinkCard({ link, enterDelayMs = 0 }: { link: LinkItem; enterDela
   const titleTagline = titleRestParts.join(" | ");
 
   // Animated Border (see `.animated-border` in globals.css): WhatsApp and
-  // LOCKER only, one shared class + pseudo-element. LOCKER starts half a
-  // revolution into its cycle so the two featured cards never spin in
-  // visible lockstep, the same antiphase precedent the old perimeter-ring
-  // effect used.
+  // LOCKER only, one shared class + pseudo-element. WhatsApp's ring starts
+  // spinning immediately; LOCKER's is a genuine positive delay this time
+  // (on request — WhatsApp first, LOCKER joins 3s later), so its hotspot
+  // sits static at --angle's 0turn initial value for those first 3s
+  // instead of already being in motion.
   const cardStyle = {
-    ...(link.featured && link.id === "locker" ? { "--border-delay": "calc(var(--border-duration) / -2)" } : {}),
+    ...(link.featured && link.id === "locker" ? { "--border-delay": "3s" } : {}),
     animationDelay: `${enterDelayMs}ms`,
   } as CSSProperties;
 

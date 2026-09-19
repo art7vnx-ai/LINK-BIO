@@ -4,11 +4,21 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Camera, Check, Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { AvatarCropper } from "@/components/profile/AvatarCropper";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024;
+// Mirrors lib/avatar-store.ts's own mime→extension map — kept as a small,
+// separate copy rather than importing that module here, since it also pulls
+// in @vercel/blob's server-only client and has no reason to reach the browser.
+const EXTENSION_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
 
-type Step = "checking" | "password" | "picker" | "uploading" | "success";
+type Step = "checking" | "password" | "picker" | "cropping" | "confirm" | "uploading" | "success";
 
 /**
  * Small camera badge overlaid on the profile avatar. Gates the actual photo
@@ -22,11 +32,21 @@ export function AvatarEditButton() {
   const [step, setStep] = useState<Step>("checking");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sourceMimeType, setSourceMimeType] = useState<string>("image/jpeg");
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const busy = step === "uploading" || loggingIn;
+
+  function clearSelection() {
+    if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+    if (croppedPreviewUrl) URL.revokeObjectURL(croppedPreviewUrl);
+    setSourceUrl(null);
+    setCroppedBlob(null);
+    setCroppedPreviewUrl(null);
+  }
 
   function resetAndClose() {
     if (busy) return;
@@ -34,9 +54,7 @@ export function AvatarEditButton() {
     setStep("checking");
     setPassword("");
     setError(null);
-    setFile(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
+    clearSelection();
   }
 
   async function handleOpen() {
@@ -89,31 +107,39 @@ export function AvatarEditButton() {
       return;
     }
 
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setFile(chosen);
-    setPreviewUrl(URL.createObjectURL(chosen));
+    clearSelection();
+    setSourceMimeType(chosen.type);
+    setSourceUrl(URL.createObjectURL(chosen));
+    setStep("cropping");
   }
 
   function handleCancelSelection() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setFile(null);
-    setPreviewUrl(null);
+    clearSelection();
     setError(null);
+    setStep("picker");
+  }
+
+  function handleCropConfirmed(blob: Blob) {
+    if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+    setSourceUrl(null);
+    setCroppedBlob(blob);
+    setCroppedPreviewUrl(URL.createObjectURL(blob));
+    setStep("confirm");
   }
 
   async function handleSave() {
-    if (!file) return;
+    if (!croppedBlob) return;
     setError(null);
     setStep("uploading");
 
     try {
       const formData = new FormData();
-      formData.set("file", file);
+      formData.set("file", croppedBlob, `avatar.${EXTENSION_BY_MIME[sourceMimeType] ?? "jpg"}`);
       const res = await fetch("/api/avatar/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Falha ao enviar a imagem.");
-        setStep("picker");
+        setStep("confirm");
         return;
       }
       setStep("success");
@@ -123,7 +149,7 @@ export function AvatarEditButton() {
       }, 900);
     } catch {
       setError("Falha de conexão. Tente novamente.");
-      setStep("picker");
+      setStep("confirm");
     }
   }
 
@@ -196,7 +222,7 @@ export function AvatarEditButton() {
           </form>
         )}
 
-        {(step === "picker" || step === "uploading") && (
+        {step === "picker" && (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <h2 id="avatar-edit-title" className="font-display text-lg font-semibold text-fg">
@@ -206,15 +232,8 @@ export function AvatarEditButton() {
             </div>
 
             <div className="flex items-center justify-center">
-              <div className="relative h-28 w-28 overflow-hidden rounded-full border border-border-strong bg-surface">
-                {previewUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- transient client-side object URL preview, not an optimizable asset
-                  <img src={previewUrl} alt="Pré-visualização da nova foto" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-muted">
-                    <Camera size={22} aria-hidden />
-                  </div>
-                )}
+              <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface text-muted">
+                <Camera size={22} aria-hidden />
               </div>
             </div>
 
@@ -229,8 +248,7 @@ export function AvatarEditButton() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-              className="h-11 rounded-full border border-border-strong text-[0.8125rem] font-medium text-fg transition-colors hover:border-primary-strong/40 disabled:opacity-40"
+              className="h-11 rounded-full border border-border-strong text-[0.8125rem] font-medium text-fg transition-colors hover:border-primary-strong/40"
             >
               Escolher foto
             </button>
@@ -242,10 +260,59 @@ export function AvatarEditButton() {
               </p>
             )}
 
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={resetAndClose}
+                className="h-11 rounded-full px-4 text-[0.8125rem] font-medium text-muted transition-colors hover:text-fg"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* The pan/zoom crop editor — see AvatarCropper.tsx. `sourceUrl` only
+            exists between a file being chosen and its crop being confirmed. */}
+        {step === "cropping" && sourceUrl && (
+          <AvatarCropper
+            src={sourceUrl}
+            outputMimeType={sourceMimeType}
+            titleId="avatar-edit-title"
+            onCancel={handleCancelSelection}
+            onConfirm={handleCropConfirmed}
+          />
+        )}
+
+        {(step === "confirm" || step === "uploading") && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <h2 id="avatar-edit-title" className="font-display text-lg font-semibold text-fg">
+                Confirmar foto
+              </h2>
+              <p className="text-[0.8125rem] text-muted">É assim que ela vai aparecer no seu perfil.</p>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <div className="relative h-28 w-28 overflow-hidden rounded-full border border-border-strong bg-surface">
+                {croppedPreviewUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- transient client-side object URL preview, not an optimizable asset
+                  <img src={croppedPreviewUrl} alt="Pré-visualização da nova foto" className="h-full w-full object-cover" />
+                )}
+              </div>
+            </div>
+
+            {error && (
+              <p className="flex items-center gap-1.5 text-[0.8125rem] text-primary-strong">
+                <AlertCircle size={14} aria-hidden />
+                {error}
+              </p>
+            )}
+
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={file ? handleCancelSelection : resetAndClose}
+                onClick={handleCancelSelection}
                 disabled={busy}
                 className="h-11 rounded-full px-4 text-[0.8125rem] font-medium text-muted transition-colors hover:text-fg disabled:opacity-40"
               >
@@ -254,7 +321,7 @@ export function AvatarEditButton() {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!file || busy}
+                disabled={!croppedBlob || busy}
                 aria-label={busy ? "Enviando foto…" : undefined}
                 className="flex h-11 min-w-28 items-center justify-center gap-1.5 rounded-full bg-primary px-5 text-[0.8125rem] font-semibold text-fg transition-opacity hover:opacity-90 disabled:opacity-40"
               >
